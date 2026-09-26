@@ -387,3 +387,15 @@ def test_versions_unique_across_threads(
         results = [f.result(timeout=60) for f in futures]
     seen = [v for r in results for v in r]
     assert len(set(seen)) == len(seen)
+
+
+@pytest.mark.c_extension
+@pytest.mark.parametrize("version", [2**32 + 1, 2**63 + 1])
+def test_getversion_keeps_all_64_bits(version: int) -> None:
+    # unsigned long is 32 bits on Windows and 32-bit platforms, where a
+    # version above 2**32 used to come back truncated.
+    c_ext = pytest.importorskip("multidict._multidict")
+    md: MultiDict[str] = c_ext.MultiDict()
+    c_ext._setversion(md, version)
+    assert c_ext.getversion(md) == version
+    assert c_ext.getversion(c_ext.MultiDictProxy(md)) == version
